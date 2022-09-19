@@ -1,7 +1,9 @@
-import MyCalendar from './components/MyCalendar';
+import MyCalender from './components/MyCalendar';
+
+// import MyCalender from './MyCalendar';
 
 function App() {
-	return <MyCalendar />;
+	return <MyCalender />;
 }
 
 export default App;
