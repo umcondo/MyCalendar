@@ -11,7 +11,6 @@ import {
 	addDays,
 } from 'date-fns';
 
-import axios from 'axios';
 import './../style.css';
 
 const CalendarHeader = ({
@@ -403,10 +402,11 @@ export default function Calender() {
 				setAPIyear((prev) =>
 					prev.map((elm) => (elm.year === year ? { ...elm, get: true } : elm))
 				);
-				const result = await axios.get(
+				const result = await fetch(
 					`https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getHoliDeInfo?solYear=${year}&numOfRows=100&ServiceKey=Jp1JskGd1jDAmnUl31%2Bb3fqVio0uixSSXJj1dUNAK9UJoWDjyMNfhCC1wr3XTxeQ0WZzq5tjURjIYxPZyuK14g%3D%3D&_type=json`
 				);
-				const response = result.data.response.body.items?.item;
+				const data = await result.json();
+				const response = data.response.body.items?.item;
 				setHoliday((prev) => [...prev, ...response]);
 			} catch (error) {
 				console.log(error);
