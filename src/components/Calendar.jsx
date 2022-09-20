@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
 	format,
-	addMonths,
-	subMonths,
 	startOfMonth,
 	startOfWeek,
 	isSameMonth,
@@ -12,13 +10,36 @@ import {
 } from 'date-fns';
 
 import './../style.css';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+	decrease,
+	increase,
+	setToday,
+} from '../features/calendar/currentMonthSlice';
+import { setCurrentDate } from '../features/calendar/selectedDateSlice';
+import { setDateToday } from '../features/calendar/selectedTodaySlice';
+import {
+	scheduleAdd,
+	scheduleRemove,
+	scheduleUpdate,
+} from '../features/calendar/scheduleSlice';
+import { holidayAdd } from '../features/calendar/holidaySlice';
 
-const CalendarHeader = ({
-	currentMonth,
-	prevMonth,
-	nextMonth,
-	onClickToday,
-}) => {
+const CalendarHeader = () => {
+	const currentMonth = useSelector((state) => state.currentMonth.value);
+	const dispatch = useDispatch();
+
+	const prevMonth = () => {
+		dispatch(decrease());
+	};
+	const nextMonth = () => {
+		dispatch(increase());
+	};
+	const onClickToday = () => {
+		dispatch(setToday());
+		dispatch(setDateToday());
+	};
+
 	return (
 		<div className="calendar__header-wrapper">
 			<h1 className="calendar__header-title">
@@ -30,6 +51,7 @@ const CalendarHeader = ({
 				<button className="text" onClick={onClickToday}>
 					{'오늘'}
 				</button>
+
 				<button onClick={nextMonth}>{'>'}</button>
 			</div>
 		</div>
@@ -50,15 +72,14 @@ const CalendarDays = () => {
 	);
 };
 
-const CalendarCells = ({
-	currentMonth,
-	selectedDate,
-	holiday,
-	selectedToday,
-	setSelectedDate,
-	setSchedule,
-	schedule,
-}) => {
+const CalendarCells = () => {
+	const currentMonth = useSelector((state) => state.currentMonth.value);
+	const selectedToday = useSelector((state) => state.selectedToday.value);
+	const schedule = useSelector((state) => state.scheduleSlice);
+	const holiday = useSelector((state) => state.holidaySlice);
+
+	const dispatch = useDispatch();
+
 	const [showScheduleAddModal, setShowScheduleAddModal] = useState(false);
 	const [showScheduleDetailModal, setShowScheduleDetailModal] = useState(false);
 	const [currentSchedule, setCurrentSchedule] = useState();
@@ -91,7 +112,7 @@ const CalendarCells = ({
 					}`}
 					key={day}
 					onClick={() => {
-						setSelectedDate(currentDay);
+						dispatch(setCurrentDate(currentDay));
 						setShowScheduleAddModal((prev) => !prev);
 					}}
 				>
@@ -119,7 +140,7 @@ const CalendarCells = ({
 						})}
 
 						{/* schedule */}
-						{schedule.map((elm) => {
+						{schedule?.map((elm) => {
 							if (format(elm.date, 't') === format(currentDay, 't')) {
 								return (
 									<div
@@ -156,7 +177,6 @@ const CalendarCells = ({
 				<ScheduleDetailModal
 					schedule={currentSchedule}
 					setShowScheduleDetailModal={setShowScheduleDetailModal}
-					setSchedule={setSchedule}
 					setCurrentSchedule={setCurrentSchedule}
 				/>
 			)}
@@ -164,9 +184,7 @@ const CalendarCells = ({
 			{showScheduleAddModal && (
 				<ScheduleAddModal
 					scheduleId={scheduleId}
-					selectedDate={selectedDate}
 					setShowScheduleAddModal={setShowScheduleAddModal}
-					setSchedule={setSchedule}
 				/>
 			)}
 		</>
@@ -176,47 +194,43 @@ const CalendarCells = ({
 const ScheduleDetailModal = ({
 	schedule,
 	setShowScheduleDetailModal,
-	setSchedule,
 	setCurrentSchedule,
 }) => {
+	const dispatch = useDispatch();
+
 	const [text, setText] = useState(schedule.scheduleText);
 	const [title, setTitle] = useState(schedule.scheduleTitle);
 
-	const onChangeText = useCallback((e) => {
+	const onChangeText = (e) => {
 		setText(e.target.value);
-	}, []);
-	const onChangeTitle = useCallback((e) => {
+	};
+	const onChangeTitle = (e) => {
 		setTitle(e.target.value);
-	}, []);
+	};
 
 	const onDeleteSchedule = useCallback(
 		(id) => {
 			// eslint-disable-next-line no-restricted-globals
 			const userSelect = confirm('정말 삭제하시겠습니까?');
 			if (userSelect) {
-				setSchedule((prev) => prev.filter((elm) => elm.scheduleId !== id));
+				dispatch(scheduleRemove(id));
 				setShowScheduleDetailModal((prev) => !prev);
 			}
 		},
-		[setSchedule, setShowScheduleDetailModal]
+		[setShowScheduleDetailModal, dispatch]
 	);
 
 	const onUpdateSchedule = useCallback(
 		(id) => {
-			setSchedule((prev) =>
-				prev.map((elm) =>
-					elm.scheduleId === id
-						? { ...elm, scheduleText: text, scheduleTitle: title }
-						: elm
-				)
-			);
+			dispatch(scheduleUpdate({ id, text, title }));
+
 			setCurrentSchedule((prev) => ({
 				...prev,
 				scheduleText: text,
 				scheduleTitle: title,
 			}));
 		},
-		[setSchedule, text, title, setCurrentSchedule]
+		[text, title, setCurrentSchedule, dispatch]
 	);
 
 	return (
@@ -274,43 +288,34 @@ const ScheduleDetailModal = ({
 		</div>
 	);
 };
-const ScheduleAddModal = ({
-	selectedDate,
-	setShowScheduleAddModal,
-	setSchedule,
-	scheduleId,
-}) => {
+const ScheduleAddModal = ({ setShowScheduleAddModal, scheduleId }) => {
+	const selectedDate = useSelector((state) => state.selectedDate.value);
+
+	const dispatch = useDispatch();
+
 	const [text, setText] = useState('');
 	const [title, setTitle] = useState('');
-	const onChangeText = useCallback((e) => {
+	const onChangeText = (e) => {
 		setText(e.target.value);
-	}, []);
-	const onChangeTitle = useCallback((e) => {
+	};
+	const onChangeTitle = (e) => {
 		setTitle(e.target.value);
-	}, []);
+	};
 
 	const onSubmit = useCallback(
 		(e) => {
 			e.preventDefault();
-			setSchedule((prev) => [
-				...prev,
-				{
+			dispatch(
+				scheduleAdd({
 					scheduleId: scheduleId.current++,
 					date: selectedDate,
 					scheduleText: text,
 					scheduleTitle: title,
-				},
-			]);
+				})
+			);
 			setShowScheduleAddModal((prev) => !prev);
 		},
-		[
-			setSchedule,
-			setShowScheduleAddModal,
-			selectedDate,
-			text,
-			scheduleId,
-			title,
-		]
+		[setShowScheduleAddModal, selectedDate, text, scheduleId, title, dispatch]
 	);
 
 	return (
@@ -364,30 +369,14 @@ const ScheduleAddModal = ({
 };
 
 export default function Calender() {
-	const [currentMonth, setCurrentMonth] = useState(new Date());
-	const [selectedDate, setSelectedDate] = useState();
-
-	const [holiday, setHoliday] = useState([]);
-	const [schedule, setSchedule] = useState([]);
+	// redux
+	const currentMonth = useSelector((state) => state.currentMonth.value);
+	const holiday = useSelector((state) => state.holidaySlice);
+	const dispatch = useDispatch();
 
 	const [APIyear, setAPIyear] = useState([
 		{ year: format(new Date(), 'yyyy'), get: false },
 	]);
-
-	const prevMonth = () => {
-		setCurrentMonth(subMonths(currentMonth, 1));
-	};
-
-	const nextMonth = () => {
-		setCurrentMonth(addMonths(currentMonth, 1));
-	};
-
-	const [selectedToday, setSelectedToday] = useState();
-
-	const onClickToday = () => {
-		setSelectedToday(new Date());
-		setCurrentMonth(new Date());
-	};
 
 	/* 
 	처음 렌더링 시 당해 데이터를 받아온다.
@@ -406,12 +395,18 @@ export default function Calender() {
 					`https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getHoliDeInfo?solYear=${year}&numOfRows=100&ServiceKey=Jp1JskGd1jDAmnUl31%2Bb3fqVio0uixSSXJj1dUNAK9UJoWDjyMNfhCC1wr3XTxeQ0WZzq5tjURjIYxPZyuK14g%3D%3D&_type=json`
 				);
 				const data = await result.json();
-				const response = data.response.body.items?.item;
-				setHoliday((prev) => [...prev, ...response]);
+				if (result.ok) {
+					const response = data.response.body.items?.item;
+
+					dispatch(holidayAdd(response));
+				} else {
+					throw new Error(result.statusText);
+				}
 			} catch (error) {
 				console.log(error);
 			}
 		}
+		dispatch(holidayAdd());
 	}, [APIyear]);
 
 	useEffect(() => {
@@ -442,22 +437,9 @@ export default function Calender() {
 	}
 	return (
 		<div className="calendar__container">
-			<CalendarHeader
-				currentMonth={currentMonth}
-				prevMonth={prevMonth}
-				nextMonth={nextMonth}
-				onClickToday={onClickToday}
-			/>
+			<CalendarHeader />
 			<CalendarDays />
-			<CalendarCells
-				currentMonth={currentMonth}
-				selectedDate={selectedDate}
-				selectedToday={selectedToday}
-				setSelectedDate={setSelectedDate}
-				holiday={holiday}
-				schedule={schedule}
-				setSchedule={setSchedule}
-			/>
+			<CalendarCells />
 		</div>
 	);
 }
