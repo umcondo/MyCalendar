@@ -1,15 +1,15 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = { value: '' };
+const initialState = { value: "" };
 
 export const selectedTodaySlice = createSlice({
-	name: 'selectedToday',
-	initialState,
-	reducers: {
-		setDateToday(state) {
-			state.value = new Date();
-		},
-	},
+  name: "selectedToday",
+  initialState,
+  reducers: {
+    setDateToday(state) {
+      state.value = new Date();
+    },
+  },
 });
 
 export const { setDateToday } = selectedTodaySlice.actions;
